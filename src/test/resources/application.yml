@@ -1,0 +1,23 @@
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    listener:
+      ack-mode: manual_immediate
+    producer:
+      acks: "all"
+      retries: 0
+      batch-size: 1000
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    platform: postgres
+    url: jdbc:postgresql://postgres:5432/playerdb
+    username: richard
+    password: test123
+  jpa:
+    hibernate:
+      ddl-auto: create
+    database: POSTGRESQL
+hibernate:
+  dialect: PostgreSQLDialect
