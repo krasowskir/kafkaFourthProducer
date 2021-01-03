@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.serialization.IntegerDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.junit.platform.commons.util.StringUtils
@@ -51,7 +53,6 @@ class DemoApplicationSpec extends Specification {
                     "spring.kafka.bootstrap-servers=" + kafka.getBootstrapServers()
             )
                     .applyTo(configurableApplicationContext.getEnvironment());
-
         }
     }
 
@@ -66,6 +67,7 @@ class DemoApplicationSpec extends Specification {
         def configs = new HashMap<>(KafkaTestUtils.producerProps(kafka.bootstrapServers))
         def factory = new DefaultKafkaProducerFactory<String, String>(configs, new StringSerializer(), new StringSerializer())
         def template = new KafkaTemplate<String, String>(factory, true)
+        def consumer = configureConsumer("earliest")
 
         and: 'an order status to be sent to order status consumer'
         def testPlayer = new Player('richard', 'krasowski', 01234567, new Address('Goethestraße 11', 'Dresden', 1139))
@@ -77,15 +79,33 @@ class DemoApplicationSpec extends Specification {
         template.send(record)
 
         then: 'consumer is able to read the message'
-        ConsumerRecord<String, Player> singleRecord = KafkaTestUtils.getSingleRecord(configureConsumer(), "players")
+        ConsumerRecord<String, Player> singleRecord = KafkaTestUtils.getOneRecord(kafka.bootstrapServers,'meineGruppe', "players",0,false,true,10000)
         StringUtils.isNotBlank(singleRecord.value() as String)
+        Thread.sleep(100)
+
+
+        and:
+        def playersTopicPartition = new TopicPartition('players', 0)
+        consumer.endOffsets([playersTopicPartition]) == Map<TopicPartition, Long>.of(playersTopicPartition,1L)
+        KafkaTestUtils.getCurrentOffset(kafka.bootstrapServers, "meineGruppe", 'players', 0).offset() == 1L
     }
 
-    def Consumer<String, String> configureConsumer(){
-        def configs = new HashMap<>(KafkaTestUtils.consumerProps(kafka.bootstrapServers, 'meineGruppe', "false"))
+    def Consumer<String, String> configureConsumer(String offsetReset){
+        def configs = meineConfigurationFuerKafka(offsetReset)
         def factory = new DefaultKafkaConsumerFactory(configs, new StringDeserializer(), new StringDeserializer())
         def consumer = factory.createConsumer()
         consumer.subscribe(['players'])
         consumer
+    }
+
+    def Map<String, Object> meineConfigurationFuerKafka(String offsetReset){
+        Map<String, Object> props = new HashMap();
+        props.put("bootstrap.servers", kafka.bootstrapServers);
+        props.put("group.id", "meineGruppe");
+        props.put("session.timeout.ms", "60000");
+        props.put("key.deserializer", StringDeserializer.class);
+        props.put("value.deserializer", StringDeserializer.class);
+        props
+
     }
 }

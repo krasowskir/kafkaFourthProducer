@@ -3,18 +3,18 @@ spring:
     name: producer-service
   kafka:
     producer:
-      bootstrap-servers: kafka2:9092,kafka1:9092,kafka0:9092
+      bootstrap-servers: kafka:9092
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
   datasource:
     driver-class-name: org.postgresql.Driver
-    platform: postgres
-    url: jdbc:postgresql://postgres:5432/playerdb
+    url: jdbc:postgresql://localhost:5432/playerdb
     username: richard
     password: test123
   jpa:
     hibernate:
       ddl-auto: create
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
 server:
   port: 8080
 logging:
